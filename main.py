@@ -18,7 +18,6 @@ ACCOUNT_API_URL = os.getenv('ACCOUNT_API_URL')
 MINING_API_URL = os.getenv('MINING_API_URL')
 TASK_API_URL = os.getenv('TASK_API_URL')
 UPGRADE_API_URL = os.getenv('UPGRADE_API_URL')
-VERIFY_SSL = os.getenv('VERIFY_SSL', 'True').lower() == 'true'
 
 def clear_console():
     os.system("cls" if os.name == "nt" else "clear")
@@ -39,9 +38,15 @@ def print_error(text):
 def print_info(text):
     print(f"{Fore.YELLOW}{Style.BRIGHT}{text}")
 
-def make_request(method, url, headers, **kwargs):
+def make_request(method, url, headers, data=None):
     try:
-        response = requests.request(method, url, headers=headers, verify=VERIFY_SSL, **kwargs)
+        if method == 'GET':
+            response = requests.get(url, headers=headers)
+        elif method == 'POST':
+            response = requests.post(url, headers=headers, json=data)
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+        
         response.raise_for_status()
         return response
     except RequestException as e:
@@ -136,7 +141,7 @@ def watch_tasks(query_id):
             watch_code = data.get('data', {}).get('watch_code', '')
             if watch_code:
                 payload = {"data": {"watch_code": watch_code}}
-                watch_response = make_request('POST', TASK_API_URL, headers, json=payload)
+                watch_response = make_request('POST', TASK_API_URL, headers, data=payload)
                 if watch_response and watch_response.status_code == 200:
                     print_success(f"Successfully completed ad watching task: {watch_code}.")
                 else:
@@ -180,7 +185,7 @@ def upgrade_mining_machine(query_id):
                     upgrade_cost = machine.get('upgrade_cost', 0)
                     if points >= upgrade_cost:
                         payload = {"data": {"machine_key": machine['machine_key']}}
-                        upgrade_response = make_request('POST', UPGRADE_API_URL, headers, json=payload)
+                        upgrade_response = make_request('POST', UPGRADE_API_URL, headers, data=payload)
                         if upgrade_response and upgrade_response.status_code == 200:
                             upgrade_messages.append(machine['name'])
                         else:
